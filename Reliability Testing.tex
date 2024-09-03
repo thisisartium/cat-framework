@@ -40,7 +40,7 @@ Validators are the foundational elements of the reliability testing framework. T
 Validator(
     name = "contraction_validator",
     message = "Output contains too many contractions",
-    predicate = lambda o: sum([1 for i in o if "contraction in" in i]) <= 3,
+    predicate = lambda o: o.count("'") <= 3,
     minimum_success_percentage = 0.95
 )
 \end{lstlisting}
@@ -54,9 +54,9 @@ Validator(
     name = "politeness_validator",
     message = "System seems to have forgotten its manners",
     predicate = lambda i, o: 
-        1 if "Thank you" in i and "You're welcome" in o else
-        1 if "Thank you" not in i else
-        0,
+        "You're welcome" in o"You're welcome" in o
+        if "Thank you" in i
+        else True,
     success_percentage = 0.90
 )
 \end{lstlisting}
@@ -143,7 +143,7 @@ Each of these rules would be represented by a separate validator:
 Validator(
     name = "contraction_validator",
     message = "Output contains too many contractions",
-    predicate = lambda o: sum([1 for i in range(N) if "contraction in" in o[i]]) <= 3,
+    predicate = lambda o: o.count("'") <= 3,
     minimum_success_percentage = 0.95
 )
 
