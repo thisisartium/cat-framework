@@ -66,25 +66,51 @@ Binomial experiments are used to quantify the reliability of the system as deter
 
 
 
-### 1.3 **Varying Inputs, Multiple Outputs:**
+### 1.3 **Varying Inputs, Multiple Outputs**
 
-   The natural progression of this pattern leads to a situation where N^2 outputs are generated.  Since generating these outputs takes time, it's important to make the most of them at the time that they're generated, so a careful implementation of a validation strategy is key.  Moreover, as each validation from the Validator is linearly independent, combining the "success percentages" should be done thoughtfully.
+In this approach, the system generates multiple outputs for each varied input, resulting in a comprehensive set of \( N^2 \) outputs. This method enables a thorough examination of the system's behavior across a wide range of scenarios, capturing both the variability in inputs and the stochastic nature of output generation.
 
-   ```text
-   input11 -> output11, output21, output31, ... outputN1
-   input12 -> output12, output22, output32, ... outputN2
-   input11 -> output13, output23, output33, ... outputN3
-   ...
-   input1N -> output1N, output2N, output3N, ... outputNN
-   ```
-   
-   ```
-   Validator: (appropriate subset of outputs) -> "success percentage"
-   ```
+```text
+input1 -> output11, output12, output13, ..., output1N
+input2 -> output21, output22, output23, ..., output2N
+input3 -> output31, output32, output33, ..., output3N
+...
+inputN -> outputN1, outputN2, outputN3, ..., outputNN
+```
 
-      - **Validating rows:**
-      - **Validating columns:**
-      - **Validating all N^2 outputs**
+Due to the significant number of outputs, an effective validation strategy is crucial to efficiently assess the system's reliability. There are three primary methods for applying validators in this context:
+
+#### **Validating Rows**
+
+Validating rows involves assessing all outputs generated from a single input. For each input \( i \), the validator is applied to the set of outputs \( \{output_{i1}, output_{i2}, ..., output_{iN}\} \).
+
+```text
+Validator for input i: (output_i1, output_i2, ..., output_iN) -> "Success Percentage for Input i"
+```
+
+This method evaluates the system's consistency and reliability in handling a specific input across multiple output variations. It helps identify inputs for which the system consistently performs well or poorly, highlighting potential input-specific issues.
+
+#### **Validating Columns**
+
+Validating columns focuses on outputs generated across different inputs under the same conditions or iterations. For each output index \( j \), the validator is applied to the set of outputs \( \{output_{1j}, output_{2j}, ..., output_{Nj}\} \).
+
+```text
+Validator for iteration j: (output_1j, output_2j, ..., output_Nj) -> "Success Percentage for Iteration j"
+```
+
+This approach assesses the system's performance across a variety of inputs for a particular output generation instance. It can reveal systemic issues that affect all inputs under certain generation conditions, such as biases introduced by specific random seeds or sampling methods.
+
+#### **Validating All \( N^2 \) Outputs**
+
+Validating all \( N^2 \) outputs involves applying the validator to every output individually and aggregating the results.
+
+```text
+Validator: (output_11, output_12, ..., output_NN) -> "Overall Success Percentage"
+```
+
+This comprehensive method provides a holistic view of the system's reliability across all inputs and outputs. While thorough, it may be resource-intensive, necessitating strategies like parallel processing or intelligent sampling to remain practical.
+
+---
 
 
 ## Section 2: Scaling Reliability Testing with Multiple Validators
@@ -228,6 +254,120 @@ One of the key advantages of using multiple validators is that they can be execu
 
 By running multiple validators simultaneously, the system can quickly identify areas where it meets or falls short of expectations, enabling prompt adjustments and improvements.
 
+### 2.6 Generalizing to a Tensor Framework for Reliability Analysis
+
+When extending reliability testing to include multiple inputs, multiple outputs per input, and multiple validators, the system's performance can be represented as a three-dimensional tensor. This **Reliability Tensor** captures the interplay between inputs, outputs, and validators, allowing for a nuanced analysis of the system's reliability.
+
+#### **Constructing the Reliability Tensor**
+
+The Reliability Tensor \( R \) can be defined with dimensions corresponding to:
+
+- **Input Dimension (I):** Represents the set of varied inputs \( \{input_1, input_2, ..., input_N\} \).
+- **Output Dimension (J):** Represents the multiple outputs generated per input \( \{output_1, output_2, ..., output_M\} \).
+- **Validator Dimension (K):** Represents the set of validators \( \{validator_1, validator_2, ..., validator_K\} \).
+
+Each element \( R[i][j][k] \) in the tensor represents the result (e.g., pass/fail, success percentage) of validator \( k \) applied to output \( output_j \) generated from input \( input_i \).
+
+```text
+R[i][j][k] = Result of validator k on output_j from input_i
+```
+
+#### **Analyzing Success Percentages Along Tensor Axes**
+
+By examining the tensor along different axes, we can derive various success percentages:
+
+- **Per-Input Success Rates:** For each input \( i \), aggregate results across outputs and validators to assess how reliably the system handles that specific input.
+
+  ```text
+  Success Percentage for Input i = Aggregate_{j,k} R[i][j][k]
+  ```
+
+- **Per-Output Success Rates:** For each output iteration \( j \), aggregate results across inputs and validators to evaluate the reliability of outputs generated under specific conditions.
+
+  ```text
+  Success Percentage for Output j = Aggregate_{i,k} R[i][j][k]
+  ```
+
+- **Per-Validator Success Rates:** For each validator \( k \), aggregate results across inputs and outputs to measure how well the system performs regarding a specific criterion.
+
+  ```text
+  Success Percentage for Validator k = Aggregate_{i,j} R[i][j][k]
+  ```
+
+#### **Developing Terms of Art**
+
+To facilitate discussion and analysis, we introduce the following terms:
+
+- **Input Reliability Profile (IRP):** The collection of success percentages for a specific input across all outputs and validators.
+
+- **Output Reliability Profile (ORP):** The collection of success percentages for a specific output iteration across all inputs and validators.
+
+- **Validator Reliability Profile (VRP):** The collection of success percentages for a specific validator across all inputs and outputs.
+
+These profiles help identify patterns and anomalies in the system's performance, enabling targeted improvements.
+
+#### **Marginal Success Percentages and Reliability Profiles**
+
+By aggregating over specific dimensions of the tensor, we can compute marginal success percentages that provide insights into different aspects of system performance.
+
+- **Input Marginal Success Percentage (Input MSP):** The success percentage for each input \( i \), aggregated over outputs and validators.
+
+  ```text
+  Input MSP[i] = (1 / (J * K)) * Sum_{j,k} R[i][j][k]
+  ```
+
+- **Output Marginal Success Percentage (Output MSP):** The success percentage for each output iteration \( j \), aggregated over inputs and validators.
+
+  ```text
+  Output MSP[j] = (1 / (I * K)) * Sum_{i,k} R[i][j][k]
+  ```
+
+- **Validator Marginal Success Percentage (Validator MSP):** The success percentage for each validator \( k \), aggregated over inputs and outputs.
+
+  ```text
+  Validator MSP[k] = (1 / (I * J)) * Sum_{i,j} R[i][j][k]
+  ```
+
+These marginal success percentages form the basis of the Input Reliability Profile (IRP), Output Reliability Profile (ORP), and Validator Reliability Profile (VRP), respectively.
+
+#### **Interpreting Reliability Profiles**
+
+- **Input Reliability Profile (IRP):** Highlights inputs where the system performs exceptionally well or poorly, guiding efforts to improve handling of specific inputs.
+
+- **Output Reliability Profile (ORP):** Reveals output iterations that consistently yield better or worse results, potentially indicating issues with certain generation methods or configurations.
+
+- **Validator Reliability Profile (VRP):** Indicates areas where the system meets or fails to meet specific criteria, informing adjustments to enhance compliance with critical requirements.
+
+#### **Visualizing the Reliability Tensor**
+
+To aid in interpreting the data, visualization techniques such as heatmaps or 3D plots can represent the tensor's elements and marginal percentages. Such visualizations can make patterns and outliers more apparent, facilitating a deeper understanding of the system's performance.
+
+#### **Framework for Combining Success Percentages**
+
+To report an overall reliability score for the system, we can aggregate success percentages from the tensor using various methods:
+
+- **Mean Aggregation:** Compute the average success percentage across all elements.
+
+  ```text
+  Overall Success Percentage = (1 / (I * J * K)) * Sum_{i,j,k} R[i][j][k]
+  ```
+
+- **Weighted Aggregation:** Assign weights to inputs, outputs, or validators based on their importance.
+
+  ```text
+  Overall Success Percentage = (Sum_{i,j,k} W[i][j][k] * R[i][j][k]) / Sum_{i,j,k} W[i][j][k]
+  ```
+
+- **Minimum Threshold Method:** Identify the lowest success percentage across any dimension to ensure reliability standards are met in all areas.
+
+  ```text
+  Overall Success Percentage = min_{i,j,k} R[i][j][k]
+  ```
+
+The choice of aggregation method depends on the specific requirements and priorities of the system being evaluated.
+
+---
+
 
 ## Section 3: Verifier | Assessing System-Wide Reliability
 
@@ -278,3 +418,217 @@ Since the verifier step uses an LLM transaction to decide whether or not the inp
     # no output published
 ```
 
+## Section 3.2 Retry Mechanisms with Validators
+
+In complex LLM-based systems, outputs may occasionally fail to meet all the criteria specified by multiple validators due to the inherent stochasticity of language models. To enhance reliability, a **retry mechanism** can be implemented, allowing the system to generate new outputs for a given input up to a maximum of `m` attempts. This section explores how to design such a retry mechanism using all validators and how to predict the expected number of retries required for an output to pass all validators based on their success percentages.
+
+### 3.2.1 Concept of the Retry Mechanism
+
+The retry mechanism operates as follows:
+
+1. **Initial Generation:** For a given input \( i \), the system generates an output \( o_1 \).
+2. **Validation:** All validators \( \{V_1, V_2, ..., V_K\} \) are applied to \( o_1 \).
+3. **Check Pass/Fail:**
+   - If \( o_1 \) passes all validators, the process stops, and \( o_1 \) is accepted.
+   - If \( o_1 \) fails any validator, the system retries up to a maximum of `m` times.
+4. **Subsequent Generations:** On each retry \( j \), the system generates a new output \( o_j \) for the same input \( i \) and repeats the validation process.
+5. **Termination Conditions:**
+   - **Success:** If any \( o_j \) passes all validators before reaching `m` retries, the output is accepted.
+   - **Failure:** If none of the outputs pass all validators after `m` retries, the process terminates without an accepted output.
+
+### 3.2.2 Predicting the Expected Number of Retries
+
+To optimize the retry mechanism, it is crucial to predict:
+
+- The expected number of retries needed for an output to pass all validators.
+- The optimal value of `m` to balance reliability and resource consumption.
+
+#### **Success Percentages of Validators**
+
+Each validator \( V_k \) has an inherent success percentage \( p_k \), representing the probability that a randomly generated output will pass \( V_k \).
+
+- **Validator Success Probability:** \( p_k = \text{Success Percentage of } V_k \)
+- **Assumption:** The validators operate independently, and the success probabilities are consistent across outputs for a given input.
+
+#### **Combined Success Probability**
+
+The probability that an output passes all validators is:
+
+- **Combined Success Probability \( P_{\text{pass}} \):**
+
+  \[
+  P_{\text{pass}} = \prod_{k=1}^{K} p_k
+  \]
+
+This formula assumes independence among validators.
+
+#### **Expected Number of Retries**
+
+The expected number of retries \( E[R] \) required for an output to pass all validators is:
+
+- **Geometric Distribution:** Since each attempt is independent, and the probability of success remains constant, the number of trials until the first success follows a geometric distribution.
+  
+- **Expected Number of Trials (including the first attempt):**
+
+  \[
+  E[R] = \frac{1}{P_{\text{pass}}}
+  \]
+
+- **Expected Number of Retries (excluding the first attempt):**
+
+  \[
+  E[\text{Retries}] = E[R] - 1 = \frac{1}{P_{\text{pass}}} - 1
+  \]
+
+#### **Determining Maximum Retries \( m \)**
+
+To choose an appropriate maximum number of retries \( m \):
+
+- **Probability of Success Within \( m \) Attempts:**
+
+  \[
+  P_{\text{success within } m \text{ attempts}} = 1 - (1 - P_{\text{pass}})^{m}
+  \]
+
+- **Selecting \( m \):** Choose \( m \) such that \( P_{\text{success within } m \text{ attempts}} \) meets a desired confidence level (e.g., 95%).
+
+### 3.2.3 Is \( m \) Input-Specific?
+
+The value of \( m \) can be:
+
+- **Input-Agnostic:** If the success probabilities \( p_k \) are consistent across all inputs, \( m \) can be set globally.
+- **Input-Specific:** If success probabilities vary significantly with different inputs (as indicated by the Input Reliability Profile), \( m \) may need adjustment per input.
+
+#### **Using the Reliability Tensor**
+
+The Reliability Tensor \( R[i][j][k] \) provides empirical success data for each input \( i \), output attempt \( j \), and validator \( k \).
+
+- **Empirical Success Probability for Input \( i \):**
+
+  \[
+  P_{\text{pass}, i} = \frac{1}{J} \sum_{j=1}^{J} \left( \prod_{k=1}^{K} R[i][j][k] \right)
+  \]
+
+- **Expected Retries for Input \( i \):**
+
+  \[
+  E[R]_i = \frac{1}{P_{\text{pass}, i}}
+  \]
+
+If \( P_{\text{pass}, i} \) varies significantly across inputs, it indicates that \( m \) should be adjusted per input to optimize performance.
+
+### 3.2.4 Practical Calculation Example
+
+**Assumptions:**
+
+- Validators and their success percentages:
+  - \( V_1 \): \( p_1 = 0.95 \)
+  - \( V_2 \): \( p_2 = 0.90 \)
+  - \( V_3 \): \( p_3 = 0.85 \)
+- Combined Success Probability:
+  
+  \[
+  P_{\text{pass}} = p_1 \times p_2 \times p_3 = 0.95 \times 0.90 \times 0.85 = 0.72675
+  \]
+
+- Expected Number of Trials:
+
+  \[
+  E[R] = \frac{1}{0.72675} \approx 1.376
+  \]
+
+- Expected Number of Retries:
+
+  \[
+  E[\text{Retries}] = E[R] - 1 \approx 0.376
+  \]
+
+- **Conclusion:** On average, less than one retry is needed for an output to pass all validators.
+
+**Determining \( m \) for 99% Confidence:**
+
+- Desired \( P_{\text{success within } m \text{ attempts}} = 0.99 \)
+
+- Solve for \( m \):
+
+  \[
+  0.99 = 1 - (1 - 0.72675)^{m} \\
+  (1 - 0.72675)^{m} = 0.01 \\
+  (0.27325)^{m} = 0.01 \\
+  m \log(0.27325) = \log(0.01) \\
+  m = \frac{\log(0.01)}{\log(0.27325)} \approx 2.74
+  \]
+
+- **Conclusion:** Set \( m = 3 \) retries to have a 99% chance of success.
+
+### 3.2.5 Factors Influencing \( m \)
+
+#### **Validator Independence**
+
+- **Assumption of Independence:** The calculation assumes validators act independently.
+- **Correlation Between Validators:** If validators are correlated, the combined success probability may differ, affecting \( m \).
+
+#### **Input Variability**
+
+- **Input-Specific Success Rates:** Use the Reliability Tensor to identify inputs with lower success probabilities.
+- **Adaptive Retry Mechanism:** Adjust \( m \) based on input-specific data to optimize resource usage.
+
+#### **System Constraints**
+
+- **Resource Limitations:** Higher \( m \) increases computational load and latency.
+- **User Experience:** Excessive retries may delay responses; balance is necessary.
+
+### 3.2.6 Implementing the Retry Mechanism
+
+**Algorithm Steps:**
+
+1. **Initialize:** Set maximum retries \( m \), initialize attempt counter \( j = 1 \).
+2. **Generate Output:** Produce output \( o_j \) for input \( i \).
+3. **Validation:** Apply all validators \( V_k \) to \( o_j \).
+4. **Check Pass/Fail:**
+   - **If Pass:** Accept \( o_j \), terminate.
+   - **If Fail:** Increment \( j \).
+5. **Retry Condition:**
+   - **If \( j \leq m \):** Go back to Step 2.
+   - **If \( j > m \):** Fail the input, terminate.
+
+**Considerations:**
+
+- **Logging:** Record each attempt and validation results for analysis.
+- **Timeouts:** Implement time constraints to prevent indefinite processing.
+- **Feedback Loop:** Analyze failed inputs to improve model or validators.
+
+### 3.2.7 Benefits and Limitations
+
+#### **Benefits:**
+
+- **Increased Reliability:** Higher chance of outputs passing all validators.
+- **Utilizes Stochasticity:** Leverages the variability in outputs to achieve compliance.
+- **Adaptive:** Can be tailored based on empirical data.
+
+#### **Limitations:**
+
+- **Resource Intensive:** Additional computational cost for retries.
+- **Latency Impact:** May increase response time.
+- **Diminishing Returns:** Beyond a certain point, increasing \( m \) yields minimal benefits.
+
+### 3.2.8 Strategies for Optimization
+
+- **Dynamic \( m \):** Adjust \( m \) based on real-time performance metrics.
+- **Prioritize Validators:** Focus on critical validators; allow flexibility on less critical ones.
+- **Improve Model Compliance:** Enhance the underlying model to increase baseline success probabilities \( p_k \).
+- **Parallel Generation:** Generate multiple outputs in parallel to reduce latency.
+
+### 3.2.9 Conclusion
+
+Implementing a retry mechanism driven by validators can significantly enhance the reliability of LLM-based systems. By predicting the expected number of retries using the validators' success percentages and the Reliability Tensor, system designers can make informed decisions about setting \( m \). Balancing reliability with resource constraints is essential, and leveraging input-specific data can further optimize performance.
+
+---
+
+**Key Takeaways:**
+
+- The retry mechanism relies on the stochastic nature of LLMs to produce acceptable outputs upon subsequent attempts.
+- Success percentages of validators are crucial for predicting the expected number of retries.
+- The combined success probability is the product of individual validator success probabilities, assuming independence.
+- The Reliability Tensor aids in understanding input-specific success rates and adjusting \( m \) accordingly.
+- Optimal \( m \) balances desired reliability levels with practical constraints like computational resources and latency.
